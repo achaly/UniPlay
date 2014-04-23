@@ -20,10 +20,10 @@
     <string name="imageTabName">图片</string>
     <string name="audioTabName">音乐</string>
     <string name="videoTabName">视频</string>
-    <string name="volumnInc">音量+</string>
-    <string name="volumnDec">音量-</string>
+    <string name="volumeInc">音量+</string>
+    <string name="volumeDec">音量-</string>
     <string name="prevAudio">上一曲</string>
     <string name="nextAudio">下一曲</string>
-    <string name="localDeviceName">本地手机</string>
+    <string name="localDeviceName">我的手机</string>
 
 </resources>

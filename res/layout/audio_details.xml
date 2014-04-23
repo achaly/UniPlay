@@ -71,16 +71,16 @@
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:layout_weight="1"
-            android:onClick="volumnInc"
-            android:text="@string/volumnInc" />
+            android:onClick="volumeInc"
+            android:text="@string/volumeInc" />
 
         <Button
             android:id="@+id/btnVolDec"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:layout_weight="1"
-            android:onClick="volumnDec"
-            android:text="@string/volumnDec" />
+            android:onClick="volumeDec"
+            android:text="@string/volumeDec" />
     </LinearLayout>
 
     <LinearLayout
