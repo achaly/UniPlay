@@ -1,3 +1,4 @@
+
 package com.milink.uniplay.audio;
 
 public class AudioData {
@@ -9,6 +10,7 @@ public class AudioData {
     private String mUri;
     private long mSize;
     private long mTime;
+    private long mDateModified;
 
     public int getId() {
         return mId;
@@ -72,5 +74,13 @@ public class AudioData {
 
     public void setTitle(String title) {
         mTitle = title;
+    }
+
+    public long getDateModified() {
+        return mDateModified;
+    }
+
+    public void setDateModified(long mDateModified) {
+        this.mDateModified = mDateModified;
     }
 }

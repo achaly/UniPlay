@@ -23,6 +23,7 @@ import android.widget.TextView;
 import android.widget.SeekBar.OnSeekBarChangeListener;
 
 import com.milink.api.v1.MilinkClientManager;
+import com.milink.api.v1.type.DeviceType;
 import com.milink.api.v1.type.ErrorCode;
 import com.milink.api.v1.type.MediaType;
 import com.milink.api.v1.type.ReturnCode;
@@ -31,18 +32,18 @@ import com.milink.uniplay.MilinkClient;
 import com.milink.uniplay.R;
 
 public class AudioActivity extends Activity implements IAudioCallback {
-    private Button backButton;
     private TextView titleTextView;
     private TextView detailTextView;
     private Button playPauseButton;
     private Button prevButton;
     private Button nextButton;
     private Button stopButton;
-    private SeekBar timeSeekBar;
-    private Button castButton;
+    private Button volumeInc;
+    private Button volumeDec;
     private TextView timeTextView;
     private int position = -1;
     private AudioData mAudioData;
+    private int volumeValue = 0;
     private boolean isPlaying = true;
     private Timer mTimer = null;
     private TimerTask mTimerTask = null;
@@ -60,27 +61,26 @@ public class AudioActivity extends Activity implements IAudioCallback {
     };
 
     void findViews() {
-        backButton = (Button) findViewById(R.id.back_button);
-        titleTextView = (TextView) findViewById(R.id.audio_title_textView);
-        castButton = (Button) findViewById(R.id.cast_button);
-        detailTextView = (TextView) findViewById(R.id.audio_detail_textView);
-        timeSeekBar = (SeekBar) findViewById(R.id.time_seekBar);
-        playPauseButton = (Button) findViewById(R.id.playPause_button);
-        prevButton = (Button) findViewById(R.id.prev_audio_button);
-        nextButton = (Button) findViewById(R.id.next_audio_button);
-        stopButton = (Button) findViewById(R.id.stop_audio_button);
-        timeTextView = (TextView) findViewById(R.id.audio_time_textview);
+        titleTextView = (TextView) findViewById(R.id.title);
+        detailTextView = (TextView) findViewById(R.id.discription);
+        playPauseButton = (Button) findViewById(R.id.btnPause);
+        prevButton = (Button) findViewById(R.id.btnPrev);
+        nextButton = (Button) findViewById(R.id.btnNext);
+        stopButton = (Button) findViewById(R.id.btnStop);
+        volumeInc = (Button) findViewById(R.id.btnVolInc);
+        volumeDec = (Button) findViewById(R.id.btnVolDec);
+
+        timeTextView = (TextView) findViewById(R.id.playtime);
         timeTextView.setText("00:00/00:00");
     }
 
     void setupActions() {
-        backButton.setOnClickListener(new backButtonListener());
-        timeSeekBar.setOnSeekBarChangeListener(new timeSeekBarListener());
         playPauseButton.setOnClickListener(new playPauseButtonListener());
         prevButton.setOnClickListener(new prevButtonListener());
         nextButton.setOnClickListener(new nextButtonListener());
         stopButton.setOnClickListener(new stopButtonListener());
-        castButton.setOnClickListener(new castButtonListener());
+        volumeInc.setOnClickListener(new volumeIncListener());
+        volumeDec.setOnClickListener(new volumeDecListener());
     }
 
     @Override
@@ -90,81 +90,33 @@ public class AudioActivity extends Activity implements IAudioCallback {
         findViews();
         setupActions();
         setVisible(View.INVISIBLE);
-        getActionBar().hide();
         if (mMilinkClientManager == null) {
             mMilinkClientManager = MilinkClient.mMilinkClient.getManagerInstance();
         }
         MilinkClient.mMilinkClient.setCallback(this);
     }
 
-    class backButtonListener implements OnClickListener {
-        @Override
-        public void onClick(View v) {
-            mMilinkClientManager.stopPlay();
-            mMilinkClientManager.disconnect();
-            finish();
-            return;
-        }
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        MenuItem mMenuItem = menu.add("push");
+        mMenuItem.setShowAsAction(MenuItem.SHOW_AS_ACTION_IF_ROOM);
+        mMenuItem.setIcon(android.R.drawable.ic_menu_share);
+
+        return true;
     }
 
-    class stopButtonListener implements OnClickListener {
-        @Override
-        public void onClick(View v) {
-            stopPlay();
-        }
-    }
-
-    class timeSeekBarListener implements OnSeekBarChangeListener {
-        @Override
-        public void onProgressChanged(SeekBar seekBar, int progresecond, boolean fromUser) {
-        }
-
-        @Override
-        public void onStartTrackingTouch(SeekBar seekBar) {
-        }
-
-        @Override
-        public void onStopTrackingTouch(SeekBar seekBar) {
-        }
-    }
-
-    class playPauseButtonListener implements OnClickListener {
-        @Override
-        public void onClick(View v) {
-            if (isPlaying) {
-                playPauseButton.setBackgroundResource(R.drawable.icon_audio_play);
-                isPlaying = false;
-                mMilinkClientManager.setPlaybackRate(0);
-            } else {
-                playPauseButton.setBackgroundResource(R.drawable.icon_audio_pause);
-                isPlaying = true;
-                mMilinkClientManager.setPlaybackRate(1);
-            }
-        }
-    }
-
-    class prevButtonListener implements OnClickListener {
-        @Override
-        public void onClick(View v) {
-            prevPlay();
-        }
-    }
-
-    class nextButtonListener implements OnClickListener {
-        @Override
-        public void onClick(View v) {
-            nextPlay();
-        }
-    }
-
-    class castButtonListener implements OnClickListener {
-        @Override
-        public void onClick(View v) {
-            ArrayList<Device> deviceList = null;
+    public boolean onOptionsItemSelected(MenuItem item) {
+        if (item.getTitle().equals("push")) {
+            final ArrayList<Device> finalDeviceList = new ArrayList<Device>();
             synchronized (MilinkClient.mDeviceList) {
-                deviceList = (ArrayList<Device>) MilinkClient.mDeviceList.clone();
+                finalDeviceList.add(MilinkClient.mDeviceList.get(0));
+                for (int i = 1; i < MilinkClient.mDeviceList.size(); ++i) {
+                    if (MilinkClient.mDeviceList.get(i).type == DeviceType.Speaker
+                            || MilinkClient.mDeviceList.get(i).type == DeviceType.TV) {
+                        finalDeviceList.add(MilinkClient.mDeviceList.get(i));
+                    }
+                }
             }
-            final ArrayList<Device> finalDeviceList = deviceList;
             final ArrayList<String> names = new ArrayList<String>();
             for (Device device : finalDeviceList) {
                 names.add(device.name);
@@ -187,66 +139,72 @@ public class AudioActivity extends Activity implements IAudioCallback {
                     })
                     .create().show();
         }
+
+        return true;
     }
 
-    public void setVisible(int visible) {
-        timeSeekBar.setVisibility(View.INVISIBLE);
-        playPauseButton.setVisibility(visible);
-        prevButton.setVisibility(visible);
-        nextButton.setVisibility(visible);
-        stopButton.setVisibility(visible);
-        timeTextView.setVisibility(visible);
+    class stopButtonListener implements OnClickListener {
+        @Override
+        public void onClick(View v) {
+            stopPlay();
+        }
     }
 
-    @Override
-    public void onConnected() {
-        setVisible(View.VISIBLE);
-        play();
+    class playPauseButtonListener implements OnClickListener {
+        @Override
+        public void onClick(View v) {
+            if (isPlaying) {
+                playPauseButton.setText("play");
+                isPlaying = false;
+                mMilinkClientManager.setPlaybackRate(0);
+            } else {
+                playPauseButton.setText("pause");
+                isPlaying = true;
+                mMilinkClientManager.setPlaybackRate(1);
+            }
+        }
     }
 
-    @Override
-    public void onConnectedFailed(ErrorCode errorCode) {
-        // TODO
-    }
-
-    @Override
-    public void onDisconnected() {
-        setVisible(View.INVISIBLE);
-        // TODO
-    }
-
-    @Override
-    public void onLoading() {
-    }
-
-    @Override
-    public void onPlaying() {
-    }
-
-    @Override
-    public void onStopped() {
-    }
-
-    @Override
-    public void onPaused() {
-    }
-
-    @Override
-    public void onVolume(int volume) {
-    }
-
-    @Override
-    public void onPrevAudio(boolean isAuto) {
-        if (isAuto) {
+    class prevButtonListener implements OnClickListener {
+        @Override
+        public void onClick(View v) {
             prevPlay();
         }
     }
 
-    @Override
-    public void onNextAudio(boolean isAuto) {
-        if (isAuto) {
+    class nextButtonListener implements OnClickListener {
+        @Override
+        public void onClick(View v) {
             nextPlay();
         }
+    }
+
+    class volumeIncListener implements OnClickListener {
+        @Override
+        public void onClick(View arg0) {
+            volumeValue += 10;
+            volumeValue = volumeValue > 100 ? 100 : volumeValue;
+            mMilinkClientManager.setVolume(volumeValue);
+        }
+    }
+
+    class volumeDecListener implements OnClickListener {
+        @Override
+        public void onClick(View v) {
+            volumeValue -= 10;
+            volumeValue = volumeValue < 0 ? 0 : volumeValue;
+            mMilinkClientManager.setVolume(volumeValue);
+        }
+    }
+
+    public void setVisible(int visible) {
+        playPauseButton.setVisibility(visible);
+        prevButton.setVisibility(visible);
+        nextButton.setVisibility(visible);
+        stopButton.setVisibility(visible);
+        volumeInc.setVisibility(visible);
+        volumeDec.setVisibility(visible);
+        timeTextView.setVisibility(visible);
     }
 
     private void startTimerTask() {
@@ -277,7 +235,6 @@ public class AudioActivity extends Activity implements IAudioCallback {
 
     private void stopPlay() {
         mMilinkClientManager.stopPlay();
-        playPauseButton.setBackgroundResource(R.drawable.icon_audio_play);
         mMilinkClientManager.disconnect();
         stopTimerTask();
         setVisible(View.INVISIBLE);
@@ -286,7 +243,6 @@ public class AudioActivity extends Activity implements IAudioCallback {
     private void play() {
         mMilinkClientManager.startPlay(mAudioData.getUri(), mAudioData.getTitle(), 0, 0,
                 MediaType.Audio);
-        playPauseButton.setBackgroundResource(R.drawable.icon_audio_pause);
         isPlaying = true;
         setVisible(View.VISIBLE);
         startTimerTask();
@@ -330,57 +286,7 @@ public class AudioActivity extends Activity implements IAudioCallback {
             titleTextView.setText(mAudioData.getTitle());
             detailTextView.setText(mAudioData.getUri());
         }
-    }
-
-    @Override
-    public boolean onCreateOptionsMenu(Menu menu) {
-        menu.add(0, Menu.FIRST, 0, "详情");
-        menu.add(0, Menu.FIRST + 1, 0, "退出程序");
-        return super.onCreateOptionsMenu(menu);
-    }
-
-    @Override
-    public boolean onMenuItemSelected(int featureId, MenuItem item) {
-        switch (item.getItemId()) {
-            case Menu.FIRST:
-                AlertDialog.Builder builder = new AlertDialog.Builder(this);
-                builder.setTitle("歌曲详情");
-                builder.setItems(new String[] {
-                        "歌名: " + mAudioData.getTitle(),
-                        "歌手: " + mAudioData.getSinger(),
-                        "专辑: " + mAudioData.getAlbum(),
-                        "时间: " + AudioUtil.formatTime(mAudioData.getTime()),
-                        "文件地址: " + mAudioData.getUri()
-                }, null);
-                builder.setNegativeButton("确定", null).show();
-                break;
-            case Menu.FIRST + 1:
-                exitSystem(this);
-                break;
-            default:
-                break;
-        }
-        return super.onMenuItemSelected(featureId, item);
-    }
-
-    public void exitSystem(Context context) {
-        AlertDialog.Builder builder = new AlertDialog.Builder(context);
-        builder.setTitle("提示");
-        builder.setMessage("确定退出");
-        builder.setNegativeButton("取消", new android.content.DialogInterface.OnClickListener() {
-            @Override
-            public void onClick(DialogInterface dialog, int which) {
-                dialog.dismiss();
-            }
-        });
-        builder.setPositiveButton("退出", new android.content.DialogInterface.OnClickListener() {
-            @Override
-            public void onClick(DialogInterface dialog, int which) {
-                dialog.dismiss();
-                finish();
-            }
-        });
-        builder.show();
+        getActionBar().setTitle(mAudioData.getTitle());
     }
 
     @Override
@@ -391,5 +297,54 @@ public class AudioActivity extends Activity implements IAudioCallback {
     @Override
     public void onDestroy() {
         super.onDestroy();
+    }
+
+    @Override
+    public void onConnected() {
+        setVisible(View.VISIBLE);
+        play();
+    }
+
+    @Override
+    public void onConnectedFailed(ErrorCode errorCode) {
+    }
+
+    @Override
+    public void onDisconnected() {
+        setVisible(View.INVISIBLE);
+    }
+
+    @Override
+    public void onLoading() {
+    }
+
+    @Override
+    public void onPlaying() {
+    }
+
+    @Override
+    public void onStopped() {
+    }
+
+    @Override
+    public void onPaused() {
+    }
+
+    @Override
+    public void onVolume(int volume) {
+    }
+
+    @Override
+    public void onPrevAudio(boolean isAuto) {
+        if (isAuto) {
+            prevPlay();
+        }
+    }
+
+    @Override
+    public void onNextAudio(boolean isAuto) {
+        if (isAuto) {
+            nextPlay();
+        }
     }
 }

@@ -35,6 +35,7 @@ public class AudioUtil {
                 String album = cursor.getString(cursor.getColumnIndex(AudioColumns.ALBUM));
                 long size = cursor.getLong(cursor.getColumnIndex(MediaColumns.SIZE));
                 long time = cursor.getLong(cursor.getColumnIndex(AudioColumns.DURATION));
+                long date = cursor.getLong(cursor.getColumnIndex(AudioColumns.DATE_MODIFIED));
                 String uri = cursor.getString(cursor.getColumnIndex(MediaColumns.DATA));
                 if (name.endsWith(".mp3") || name.endsWith(".MP3")) {
                     AudioData AudioData = new AudioData();
@@ -43,12 +44,14 @@ public class AudioUtil {
                     AudioData.setSinger(singer);
                     AudioData.setSize(size);
                     AudioData.setTime(time);
+                    AudioData.setDateModified(date);
                     AudioData.setTitle(title);
                     AudioData.setAlbum(album);
                     AudioData.setUri(uri);
                     audioList.add(AudioData);
                 }
             }
+            cursor.close();
         }
         musicCount = audioList.size();
         return audioList;
@@ -64,5 +67,24 @@ public class AudioUtil {
         ContentResolver cr = context.getContentResolver();
         Uri uri = MediaStore.Audio.Media.getContentUriForPath(audioList.get(position).getUri());
         cr.delete(uri, BaseColumns._ID + "=" + audioList.get(position).getId(), null);
+    }
+    
+    public static String formatSize(long size) {
+        long l = size;
+        String s = "GB";
+        if (l > 1024 * 1024 * 1024) {
+            l /= 1024 * 1024 * 1024;
+        } else if (l > 1024 * 1024) {
+            l /= 1024 * 1024;
+            s = "MB";
+        } else if (l > 1024) {
+            l /= 1024;
+            s = "KB";
+        } else {
+            s = "B";
+        }
+
+        return String.valueOf(l) + s;
+
     }
 }

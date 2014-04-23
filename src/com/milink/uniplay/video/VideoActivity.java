@@ -1,6 +1,7 @@
 
 package com.milink.uniplay.video;
 
+import android.app.ActionBar;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.DialogInterface;
@@ -16,6 +17,7 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import com.milink.api.v1.MilinkClientManager;
+import com.milink.api.v1.type.DeviceType;
 import com.milink.api.v1.type.ErrorCode;
 import com.milink.api.v1.type.MediaType;
 import com.milink.api.v1.type.ReturnCode;
@@ -35,11 +37,14 @@ import java.util.TimerTask;
 public class VideoActivity extends Activity implements IVideoCallback {
     private String TAG = this.getClass().getSimpleName();
 
+    private MilinkClientManager mMilinkClientManager = null;
+
     private String timeout = "5000";
     private int VIDEO_SEP_TIME = 1000;
     private int VIDEO_DURATION = 0;
 
     private boolean isVideoPlaying = false;
+    private int volumeValue = 0;
 
     private List<Map<String, Object>> mVideoList = null;
     private int mCurrentPosition = 0;
@@ -60,7 +65,8 @@ public class VideoActivity extends Activity implements IVideoCallback {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.video_details);
-        Log.d(TAG, "VideoActivity onCreate");
+
+        mMilinkClientManager = MilinkClient.mMilinkClient.getManagerInstance();
 
         Bundle mBundle = getIntent().getExtras();
         mVideoList = (List<Map<String, Object>>) mBundle.get("videoInfoList");
@@ -92,11 +98,15 @@ public class VideoActivity extends Activity implements IVideoCallback {
         if (item.getTitle().equals("push")) {
             Log.d(TAG, "push");
 
-            ArrayList<Device> deviceList = null;
+            final ArrayList<Device> finalDeviceList = new ArrayList<Device>();
             synchronized (MilinkClient.mDeviceList) {
-                deviceList = (ArrayList<Device>) MilinkClient.mDeviceList.clone();
+                finalDeviceList.add(MilinkClient.mDeviceList.get(0));
+                for (int i = 1; i < MilinkClient.mDeviceList.size(); ++i) {
+                    if (MilinkClient.mDeviceList.get(i).type == DeviceType.TV) {
+                        finalDeviceList.add(MilinkClient.mDeviceList.get(i));
+                    }
+                }
             }
-            final ArrayList<Device> finalDeviceList = deviceList;
             final ArrayList<String> names = new ArrayList<String>();
             for (Device device : finalDeviceList) {
                 names.add(device.name);
@@ -111,11 +121,10 @@ public class VideoActivity extends Activity implements IVideoCallback {
                         @Override
                         public void onClick(DialogInterface dialog, int pos) {
                             if (pos == 0) {
+                                stopVideo(getCurrentFocus());
                                 return;
                             }
                             String deviceId = finalDeviceList.get(pos).id;
-                            MilinkClientManager mMilinkClientManager = MilinkClient.mMilinkClient
-                                    .getManagerInstance();
                             ReturnCode retcode = mMilinkClientManager.connect(deviceId,
                                     Integer.valueOf(timeout));
                             Log.d(TAG, "ret code: " + retcode);
@@ -123,11 +132,9 @@ public class VideoActivity extends Activity implements IVideoCallback {
 
                     })
                     .create().show();
-
-            return true;
         }
 
-        return false;
+        return true;
     }
 
     private void setVideoInfo(List<Map<String, Object>> list, int pos) {
@@ -146,30 +153,42 @@ public class VideoActivity extends Activity implements IVideoCallback {
         tv4.setText("Description: " + (String) map.get("DESCRIPTION"));
         tv5.setText("Data: " + (String) map.get("DATA"));
         tv6.setText("MIME_TYPE: " + (String) map.get("MIME_TYPE"));
+
+        getActionBar().setTitle((String) map.get("TITLE"));
     }
 
-    private synchronized void setPlaying(boolean playing) {
+    private void setPlaying(boolean playing) {
         isVideoPlaying = playing;
+    }
+
+    private void setVolumn() {
+        volumeValue = mMilinkClientManager.getVolume();
     }
 
     public void setVisible(boolean visible) {
         View view0 = findViewById(R.id.playtime);
         View view1 = findViewById(R.id.btnPause);
         View view2 = findViewById(R.id.btnStop);
-        View view3 = findViewById(R.id.btnPrev);
-        View view4 = findViewById(R.id.btnNext);
+        View view3 = findViewById(R.id.btnVolInc);
+        View view4 = findViewById(R.id.btnVolDec);
+        View view5 = findViewById(R.id.btnPrev);
+        View view6 = findViewById(R.id.btnNext);
         if (!visible) {
             view0.setVisibility(View.INVISIBLE);
             view1.setVisibility(View.INVISIBLE);
             view2.setVisibility(View.INVISIBLE);
             view3.setVisibility(View.INVISIBLE);
             view4.setVisibility(View.INVISIBLE);
+            view5.setVisibility(View.INVISIBLE);
+            view6.setVisibility(View.INVISIBLE);
         } else {
             view0.setVisibility(View.VISIBLE);
             view1.setVisibility(View.VISIBLE);
             view2.setVisibility(View.VISIBLE);
             view3.setVisibility(View.VISIBLE);
             view4.setVisibility(View.VISIBLE);
+            view5.setVisibility(View.VISIBLE);
+            view6.setVisibility(View.VISIBLE);
         }
     }
 
@@ -179,9 +198,8 @@ public class VideoActivity extends Activity implements IVideoCallback {
 
             @Override
             public void run() {
-                MilinkClientManager mMgr = MilinkClient.mMilinkClient.getManagerInstance();
-                int len = mMgr.getPlaybackDuration();
-                int pos = mMgr.getPlaybackProgress();
+                int len = mMilinkClientManager.getPlaybackDuration();
+                int pos = mMilinkClientManager.getPlaybackProgress();
                 len = len <= 0 ? 0 : len;
                 pos = pos <= 0 ? 0 : pos;
                 Log.d(TAG, String.format("timer len = %d, pos = %d", len, pos));
@@ -211,7 +229,6 @@ public class VideoActivity extends Activity implements IVideoCallback {
     }
 
     public void playVideo(View view) {
-        MilinkClientManager mMilinkClientManager = MilinkClient.mMilinkClient.getManagerInstance();
         Map<String, Object> map = mVideoList.get(mCurrentPosition);
         String title = (String) map.get("TITLE");
         String url = (String) map.get("DATA");
@@ -227,7 +244,6 @@ public class VideoActivity extends Activity implements IVideoCallback {
     }
 
     public void pauseVideo(View view) {
-        MilinkClientManager mMilinkClientManager = MilinkClient.mMilinkClient.getManagerInstance();
         ReturnCode retcode;
         if (isVideoPlaying) {
             retcode = mMilinkClientManager.setPlaybackRate(0);
@@ -238,7 +254,6 @@ public class VideoActivity extends Activity implements IVideoCallback {
     }
 
     public void stopVideo(View view) {
-        MilinkClientManager mMilinkClientManager = MilinkClient.mMilinkClient.getManagerInstance();
         ReturnCode retcode = mMilinkClientManager.stopPlay();
         ReturnCode retcode1 = mMilinkClientManager.disconnect();
         Log.d(TAG, "stop ret code: " + retcode);
@@ -249,8 +264,21 @@ public class VideoActivity extends Activity implements IVideoCallback {
         setPlaying(false);
     }
 
+    public void volumeInc(View view) {
+        volumeValue += 10;
+        volumeValue = volumeValue > 100 ? 100 : volumeValue;
+        ReturnCode retcode = mMilinkClientManager.setVolume(volumeValue);
+        Log.d(TAG, "vol inc ret code: " + retcode);
+    }
+
+    public void volumeDec(View view) {
+        volumeValue -= 10;
+        volumeValue = volumeValue < 0 ? 0 : volumeValue;
+        ReturnCode retcode = mMilinkClientManager.setVolume(volumeValue);
+        Log.d(TAG, "vol dec ret code: " + retcode);
+    }
+
     public void prevVideo(View view) {
-        MilinkClientManager mMilinkClientManager = MilinkClient.mMilinkClient.getManagerInstance();
         if (mCurrentPosition == 0) {
             return;
         }
@@ -267,7 +295,6 @@ public class VideoActivity extends Activity implements IVideoCallback {
     }
 
     public void nextVideo(View view) {
-        MilinkClientManager mMilinkClientManager = MilinkClient.mMilinkClient.getManagerInstance();
         if (mCurrentPosition == mVideoList.size() - 1) {
             return;
         }
@@ -311,6 +338,7 @@ public class VideoActivity extends Activity implements IVideoCallback {
         btn.setText(R.string.pauseVideo);
         setPlaying(true);
         setVisible(true);
+        setVolumn();
         Toast.makeText(this, R.string.playing, Toast.LENGTH_SHORT).show();
     }
 
@@ -332,6 +360,7 @@ public class VideoActivity extends Activity implements IVideoCallback {
 
     @Override
     public void onVolume(int volume) {
+        setVolumn();
     }
 
 }
