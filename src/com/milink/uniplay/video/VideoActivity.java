@@ -20,6 +20,7 @@ import com.milink.api.v1.type.DeviceType;
 import com.milink.api.v1.type.ErrorCode;
 import com.milink.api.v1.type.MediaType;
 import com.milink.api.v1.type.ReturnCode;
+import com.milink.uniplay.Automata;
 import com.milink.uniplay.Device;
 import com.milink.uniplay.MilinkClient;
 import com.milink.uniplay.R;
@@ -42,10 +43,7 @@ public class VideoActivity extends Activity implements IVideoCallback {
     private int VIDEO_SEP_TIME = 1000;
     private int VIDEO_DURATION = 0;
 
-    private volatile boolean mDeviceConnecting = false;
-    private volatile boolean mDeviceConnected = false;
-    private volatile boolean mVideoPlaying = false;
-    private volatile boolean mVideoStopped = true;
+    private Automata mCurrentState = Automata.START;
     private int volumeValue = 0;
 
     private List<Map<String, Object>> mVideoList = null;
@@ -54,6 +52,7 @@ public class VideoActivity extends Activity implements IVideoCallback {
 
     private Timer mTimer = null;
     private TimerTask mTimerTask = null;
+    private int mVideoLenght = 0;
 
     private Handler handler = new Handler() {
         public void handleMessage(Message msg) {
@@ -77,18 +76,14 @@ public class VideoActivity extends Activity implements IVideoCallback {
         mCurrentPosition = (Integer) mBundle.get("position");
 
         setVideoInfo(mVideoList, mCurrentPosition);
-        setVisible(false);
-        setVideoPlaying(false);
-        setVideoStopped(true);
-        setDeviceConnecting(false);
-        setDeviceConnected(false);
-
+        switchState(Automata.START);
     }
 
     @Override
     protected void onDestroy() {
         super.onDestroy();
         stopVideo(getCurrentFocus());
+        disconnect();
     }
 
     @Override
@@ -132,12 +127,16 @@ public class VideoActivity extends Activity implements IVideoCallback {
                                 stopVideo(getCurrentFocus());
                                 disconnect();
                             } else if (pos == mDeviceCurrentPosition) {
-                                if (!mDeviceConnected && !mDeviceConnecting) {
+                                if (mCurrentState == Automata.START) {
                                     String deviceId = finalDeviceList.get(pos).id;
                                     connect(deviceId, CONNECT_TIME_OUT);
+                                } else if (mCurrentState == Automata.STOPPED) {
+                                    switchState(Automata.DEVICE_READY);
+                                    playVideo(getCurrentFocus());
                                 }
                             } else {
-                                if (mDeviceCurrentPosition == 0) {
+                                if (mDeviceCurrentPosition != 0) {
+                                    stopVideo(getCurrentFocus());
                                     disconnect();
                                 }
                                 mDeviceCurrentPosition = pos;
@@ -174,23 +173,23 @@ public class VideoActivity extends Activity implements IVideoCallback {
     }
 
     private void setVideoPlaying(boolean playing) {
-        mVideoPlaying = playing;
+        Button btn = (Button) findViewById(R.id.btnPause);
+        if (playing) {
+            btn.setText(R.string.pauseVideo);
+        } else {
+            btn.setText(R.string.playVideo);
+        }
     }
 
     private void setVideoStopped(boolean stop) {
-        mVideoStopped = stop;
-    }
-
-    private void setDeviceConnecting(boolean connecting) {
-        mDeviceConnecting = connecting;
-    }
-
-    private void setDeviceConnected(boolean connected) {
-        mDeviceConnected = connected;
+        if (stop) {
+            Button btn = (Button) findViewById(R.id.btnPause);
+            btn.setText(R.string.playVideo);
+        }
     }
 
     private void setVolumn() {
-        if (mDeviceConnected) {
+        if (mCurrentState == Automata.PAUSED || mCurrentState == Automata.PLAYING) {
             volumeValue = mMilinkClientManager.getVolume();
         }
     }
@@ -228,13 +227,16 @@ public class VideoActivity extends Activity implements IVideoCallback {
 
             @Override
             public void run() {
-                int len = mMilinkClientManager.getPlaybackDuration();
+                if (mVideoLenght <= 0) {
+                    mVideoLenght = mMilinkClientManager.getPlaybackDuration();
+                    mVideoLenght = mVideoLenght <= 0 ? 0 : mVideoLenght;
+                }
                 int pos = mMilinkClientManager.getPlaybackProgress();
-                len = len <= 0 ? 0 : len;
                 pos = pos <= 0 ? 0 : pos;
-                Log.d(TAG, String.format("timer len = %d, pos = %d", len, pos));
+                // Log.d(TAG, String.format("timer len = %d, pos = %d",
+                // mVideoLenght, pos));
 
-                String text = convertTime(pos) + "/" + convertTime(len);
+                String text = convertTime(pos) + "/" + convertTime(mVideoLenght);
                 Message msg = Message.obtain();
                 msg.obj = text;
                 msg.what = VIDEO_DURATION;
@@ -258,19 +260,87 @@ public class VideoActivity extends Activity implements IVideoCallback {
         }
     }
 
+    private boolean switchState(Automata state) {
+        Log.d(TAG, "current state: " + mCurrentState);
+        switch (state) {
+            case START:
+            case CONNECT_FAILED:
+                setVisible(false);
+                setVideoPlaying(false);
+                setVideoStopped(true);
+                mCurrentState = state;
+                return true;
+            case CONNECTING:
+                if (mCurrentState != Automata.START) {
+                    return false;
+                }
+                mCurrentState = state;
+                return true;
+            case DEVICE_READY:
+                if (mCurrentState != Automata.CONNECTING && mCurrentState != Automata.STOPPED) {
+                    return false;
+                }
+                mCurrentState = state;
+                return true;
+            case LOADING:
+                if (mCurrentState != Automata.DEVICE_READY && mCurrentState != Automata.PLAYING) {
+                    return false;
+                }
+                mCurrentState = state;
+                return true;
+            case PAUSED:
+                if (mCurrentState != Automata.PLAYING && mCurrentState != Automata.LOADING) {
+                    return false;
+                }
+                setVisible(true);
+                setVideoPlaying(false);
+                setVideoStopped(false);
+                mCurrentState = state;
+                return true;
+            case PLAYING:
+                if (mCurrentState != Automata.DEVICE_READY && mCurrentState != Automata.PAUSED
+                        && mCurrentState != Automata.PLAYING && mCurrentState != Automata.LOADING) {
+                    return false;
+                }
+                setVisible(true);
+                setVideoPlaying(true);
+                setVideoStopped(false);
+                mCurrentState = state;
+                return true;
+            case STOPPED:
+                if (mCurrentState != Automata.PLAYING && mCurrentState != Automata.PAUSED
+                        && mCurrentState != Automata.LOADING) {
+                    return false;
+                }
+                setVisible(false);
+                setVideoPlaying(false);
+                setVideoStopped(true);
+                mCurrentState = state;
+                return true;
+            default:
+                return false;
+        }
+    }
+
     public void connect(String deviceId, int timeout) {
-        mDeviceConnecting = true;
-        ReturnCode retcode = mMilinkClientManager.connect(deviceId, timeout);
-        Log.d(TAG, "connect ret code: " + retcode);
+        if (switchState(Automata.CONNECTING)) {
+            Log.d(TAG, "new state: " + mCurrentState);
+            ReturnCode retcode = mMilinkClientManager.connect(deviceId, timeout);
+            Log.d(TAG, "connect ret code: " + retcode);
+        }
     }
 
     public void disconnect() {
-        ReturnCode retcode = mMilinkClientManager.disconnect();
-        Log.d(TAG, "disconnect ret code: " + retcode);
+        if (switchState(Automata.START)) {
+            Log.d(TAG, "new state: " + mCurrentState);
+            ReturnCode retcode = mMilinkClientManager.disconnect();
+            Log.d(TAG, "disconnect ret code: " + retcode);
+        }
     }
 
     public void playVideo(View view) {
-        if (mDeviceConnected) {
+        if (switchState(Automata.PLAYING)) {
+            Log.d(TAG, "new state: " + mCurrentState);
             Map<String, Object> map = mVideoList.get(mCurrentPosition);
             String title = (String) map.get("TITLE");
             String url = (String) map.get("DATA");
@@ -285,36 +355,35 @@ public class VideoActivity extends Activity implements IVideoCallback {
     }
 
     public void pauseVideo(View view) {
-        if (mDeviceConnected) {
+        if (mCurrentState == Automata.PLAYING) {
+            switchState(Automata.PAUSED);
             ReturnCode retcode = null;
-            if (mVideoStopped) {
-                playVideo(view);
-            }
-            else if (mVideoPlaying) {
-                retcode = mMilinkClientManager.setPlaybackRate(0);
-            } else {
-                retcode = mMilinkClientManager.setPlaybackRate(1);
-            }
-            Log.d(TAG, "pause ret code: " + retcode);
+            retcode = mMilinkClientManager.setPlaybackRate(0);
+            Log.d(TAG, "rate 0 ret code: " + retcode);
+        } else if (mCurrentState == Automata.PAUSED) {
+            switchState(Automata.PLAYING);
+            ReturnCode retcode = null;
+            retcode = mMilinkClientManager.setPlaybackRate(1);
+            Log.d(TAG, "rate 1 ret code: " + retcode);
+        } else {
+            switchState(Automata.PLAYING);
+            playVideo(view);
         }
+        Log.d(TAG, "new state: " + mCurrentState);
     }
 
     public void stopVideo(View view) {
-        if (mDeviceConnected) {
+        if (switchState(Automata.STOPPED)) {
+            Log.d(TAG, "new state: " + mCurrentState);
             ReturnCode retcode = mMilinkClientManager.stopPlay();
             Log.d(TAG, "stop ret code: " + retcode);
-            stopTimerTask();
 
-            // call back onStop
-            setVideoStopped(true);
-            setVideoPlaying(false);
-            Button btn = (Button) findViewById(R.id.btnPause);
-            btn.setText(R.string.playVideo);
+            stopTimerTask();
         }
     }
 
     public void volumeInc(View view) {
-        if (mDeviceConnected) {
+        if (mCurrentState == Automata.PAUSED || mCurrentState == Automata.PLAYING) {
             volumeValue += 10;
             volumeValue = volumeValue > 100 ? 100 : volumeValue;
             ReturnCode retcode = mMilinkClientManager.setVolume(volumeValue);
@@ -323,7 +392,7 @@ public class VideoActivity extends Activity implements IVideoCallback {
     }
 
     public void volumeDec(View view) {
-        if (mDeviceConnected) {
+        if (mCurrentState == Automata.PAUSED || mCurrentState == Automata.PLAYING) {
             volumeValue -= 10;
             volumeValue = volumeValue < 0 ? 0 : volumeValue;
             ReturnCode retcode = mMilinkClientManager.setVolume(volumeValue);
@@ -332,7 +401,8 @@ public class VideoActivity extends Activity implements IVideoCallback {
     }
 
     public void prevVideo(View view) {
-        if (mDeviceConnected) {
+        if (mCurrentState == Automata.DEVICE_READY || mCurrentState == Automata.PAUSED
+                || mCurrentState == Automata.PLAYING) {
             if (mCurrentPosition == 0) {
                 return;
             }
@@ -341,10 +411,9 @@ public class VideoActivity extends Activity implements IVideoCallback {
             String title = (String) map.get("TITLE");
             String url = (String) map.get("DATA");
 
+            switchState(Automata.PLAYING);
+            Log.d(TAG, "new state: " + mCurrentState);
             setVideoInfo(mVideoList, mCurrentPosition);
-            setVideoStopped(true);
-            setVideoPlaying(false);
-
             ReturnCode retcode = mMilinkClientManager
                     .startPlay(url, title, 0, 0.0, MediaType.Video);
             Log.d(TAG, "startPlay ret code: " + retcode);
@@ -352,7 +421,8 @@ public class VideoActivity extends Activity implements IVideoCallback {
     }
 
     public void nextVideo(View view) {
-        if (mDeviceConnected) {
+        if (mCurrentState == Automata.DEVICE_READY || mCurrentState == Automata.PAUSED
+                || mCurrentState == Automata.PLAYING) {
             if (mCurrentPosition == mVideoList.size() - 1) {
                 return;
             }
@@ -361,10 +431,9 @@ public class VideoActivity extends Activity implements IVideoCallback {
             String title = (String) map.get("TITLE");
             String url = (String) map.get("DATA");
 
+            switchState(Automata.PLAYING);
+            Log.d(TAG, "new state: " + mCurrentState);
             setVideoInfo(mVideoList, mCurrentPosition);
-            setVideoStopped(true);
-            setVideoPlaying(false);
-
             ReturnCode retcode = mMilinkClientManager
                     .startPlay(url, title, 0, 0.0, MediaType.Video);
             Log.d(TAG, "startPlay ret code: " + retcode);
@@ -373,45 +442,34 @@ public class VideoActivity extends Activity implements IVideoCallback {
 
     @Override
     public void onConnected() {
-        setDeviceConnected(true);
-        setDeviceConnecting(false);
-        setVideoStopped(true);
-        setVideoPlaying(false);
+        switchState(Automata.DEVICE_READY);
+        Log.d(TAG, "new state: " + mCurrentState);
         playVideo(getCurrentFocus());
-        setVisible(true);
         Toast.makeText(this, R.string.connected, Toast.LENGTH_SHORT).show();
     }
 
     @Override
     public void onConnectedFailed(ErrorCode errorCode) {
-        setDeviceConnected(false);
-        setDeviceConnecting(false);
-        setVideoStopped(true);
-        setVideoPlaying(false);
-        setVisible(false);
+        switchState(Automata.CONNECT_FAILED);
+        Log.d(TAG, "new state: " + mCurrentState);
         Toast.makeText(this, R.string.connectFailed, Toast.LENGTH_SHORT).show();
     }
 
     @Override
     public void onDisconnected() {
-        setDeviceConnected(false);
-        setDeviceConnecting(false);
-        setVideoStopped(true);
-        setVideoPlaying(false);
-        setVisible(false);
+        switchState(Automata.START);
+        Log.d(TAG, "new state: " + mCurrentState);
     }
 
     @Override
     public void onLoading() {
+        switchState(Automata.LOADING);
     }
 
     @Override
     public void onPlaying() {
-        Button btn = (Button) findViewById(R.id.btnPause);
-        btn.setText(R.string.pauseVideo);
-        setVideoStopped(false);
-        setVideoPlaying(true);
-        setVisible(true);
+        switchState(Automata.PLAYING);
+        Log.d(TAG, "new state: " + mCurrentState);
         setVolumn();
         Toast.makeText(this, R.string.playing, Toast.LENGTH_SHORT).show();
     }
@@ -419,19 +477,14 @@ public class VideoActivity extends Activity implements IVideoCallback {
     @Override
     public void onStopped() {
         stopTimerTask();
-        setVideoStopped(true);
-        setVideoPlaying(false);
-        Button btn = (Button) findViewById(R.id.btnPause);
-        btn.setText(R.string.playVideo);
-        setVisible(false);
-        Toast.makeText(this, R.string.stopped, Toast.LENGTH_SHORT).show();
+         switchState(Automata.STOPPED);
+         Log.d(TAG, "new state: " + mCurrentState);
+         Toast.makeText(this, R.string.stopped, Toast.LENGTH_SHORT).show();
     }
 
     @Override
     public void onPaused() {
-        Button btn = (Button) findViewById(R.id.btnPause);
-        btn.setText(R.string.playVideo);
-        setVideoPlaying(false);
+        switchState(Automata.PAUSED);
         Toast.makeText(this, R.string.paused, Toast.LENGTH_SHORT).show();
     }
 
