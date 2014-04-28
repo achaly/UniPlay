@@ -136,6 +136,7 @@ public class VideoActivity extends Activity implements IVideoCallback {
                                 }
                             } else {
                                 if (mDeviceCurrentPosition != 0) {
+                                    switchState(Automata.START);
                                     stopVideo(getCurrentFocus());
                                     disconnect();
                                 }
@@ -268,7 +269,7 @@ public class VideoActivity extends Activity implements IVideoCallback {
                 setVisible(false);
                 setVideoPlaying(false);
                 setVideoStopped(true);
-                mCurrentState = state;
+                mCurrentState = Automata.START;
                 return true;
             case CONNECTING:
                 if (mCurrentState != Automata.START) {

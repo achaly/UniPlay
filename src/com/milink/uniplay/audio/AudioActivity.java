@@ -35,8 +35,11 @@ import com.milink.uniplay.R;
 public class AudioActivity extends Activity implements IAudioCallback {
     private String TAG = AudioActivity.class.getSimpleName();
 
-    private TextView titleTextView;
-    private TextView detailTextView;
+    private TextView mTextViewTitle;
+    private TextView mTextViewAlbum;
+    private TextView mTextViewArtist;
+    private TextView mTextViewData;
+    private TextView mTextView_MIME_TYPE;
     private Button playPauseButton;
     private Button prevButton;
     private Button nextButton;
@@ -70,8 +73,11 @@ public class AudioActivity extends Activity implements IAudioCallback {
     };
 
     void findViews() {
-        titleTextView = (TextView) findViewById(R.id.title);
-        detailTextView = (TextView) findViewById(R.id.discription);
+        mTextViewTitle = (TextView) findViewById(R.id.title);
+        mTextViewAlbum = (TextView) findViewById(R.id.album);
+        mTextViewArtist = (TextView) findViewById(R.id.artist);
+        mTextViewData = (TextView) findViewById(R.id.data);
+        mTextView_MIME_TYPE = (TextView) findViewById(R.id.MIME_TYPE);
         playPauseButton = (Button) findViewById(R.id.btnPause);
         prevButton = (Button) findViewById(R.id.btnPrev);
         nextButton = (Button) findViewById(R.id.btnNext);
@@ -99,22 +105,17 @@ public class AudioActivity extends Activity implements IAudioCallback {
         findViews();
         setupActions();
         setVisible(View.INVISIBLE);
-        if (mMilinkClientManager == null) {
-            mMilinkClientManager = MilinkClient.mMilinkClient.getManagerInstance();
-        }
+        mMilinkClientManager = MilinkClient.mMilinkClient.getManagerInstance();
         MilinkClient.mMilinkClient.setCallback(this);
 
         position = this.getIntent().getIntExtra("Position", 0);
-        if (AudioUtil.audioList == null) {
-            titleTextView.setText("没有歌曲存在");
-        } else {
-            if (position == -1) {
-                position = 0;
-            }
-            mAudioData = AudioUtil.audioList.get(position);
-            titleTextView.setText(mAudioData.getTitle());
-            detailTextView.setText(mAudioData.getUri());
-        }
+        mAudioData = AudioUtil.audioList.get(position);
+        mTextViewTitle.setText("title: " + mAudioData.getTitle());
+        mTextViewAlbum.setText("album: " + mAudioData.getAlbum());
+        mTextViewArtist.setText("artist: " + mAudioData.getSinger());
+        mTextViewData.setText("data: " + mAudioData.getUri());
+        mTextView_MIME_TYPE.setText("MIME_TYPE: mp3");
+
         getActionBar().setTitle(mAudioData.getTitle());
 
         switchState(Automata.START);
@@ -173,6 +174,7 @@ public class AudioActivity extends Activity implements IAudioCallback {
                                 }
                             } else {
                                 if (mDeviceCurrentPosition != 0) {
+                                    switchState(Automata.START);
                                     stopPlay();
                                     disconnect();
                                 }
@@ -350,8 +352,11 @@ public class AudioActivity extends Activity implements IAudioCallback {
                 return;
             }
             mAudioData = AudioUtil.audioList.get(position);
-            titleTextView.setText(mAudioData.getTitle());
-            detailTextView.setText(mAudioData.getUri());
+            mTextViewTitle.setText("title: " + mAudioData.getTitle());
+            mTextViewAlbum.setText("album: " + mAudioData.getAlbum());
+            mTextViewArtist.setText("artist: " + mAudioData.getSinger());
+            mTextViewData.setText("data: " + mAudioData.getUri());
+            mTextView_MIME_TYPE.setText("MIME_TYPE: mp3");
             play();
         }
     }
@@ -370,8 +375,11 @@ public class AudioActivity extends Activity implements IAudioCallback {
             }
 
             mAudioData = AudioUtil.audioList.get(position);
-            titleTextView.setText(mAudioData.getTitle());
-            detailTextView.setText(mAudioData.getUri());
+            mTextViewTitle.setText("title: " + mAudioData.getTitle());
+            mTextViewAlbum.setText("album: " + mAudioData.getAlbum());
+            mTextViewArtist.setText("artist: " + mAudioData.getSinger());
+            mTextViewData.setText("data: " + mAudioData.getUri());
+            mTextView_MIME_TYPE.setText("MIME_TYPE: mp3");
             play();
         }
     }
