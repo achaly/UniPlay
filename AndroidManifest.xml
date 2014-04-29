@@ -32,11 +32,11 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-        <activity android:name=".audio.AudioActivity" >
+        <activity android:name=".audio.AudioActivity" android:screenOrientation="nosensor">
         </activity>
-        <activity android:name=".image.ImageActivity" >
+        <activity android:name=".image.ImageActivity" android:screenOrientation="nosensor">
         </activity>
-        <activity android:name=".video.VideoActivity" >
+        <activity android:name=".video.VideoActivity" android:screenOrientation="nosensor">
         </activity>
     </application>
 
