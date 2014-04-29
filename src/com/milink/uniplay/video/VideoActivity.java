@@ -76,6 +76,7 @@ public class VideoActivity extends Activity implements IVideoCallback {
         mCurrentPosition = (Integer) mBundle.get("position");
 
         setVideoInfo(mVideoList, mCurrentPosition);
+        getActionBar().setTitle(R.string.localDeviceName);
         switchState(Automata.START);
     }
 
