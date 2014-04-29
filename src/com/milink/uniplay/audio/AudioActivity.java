@@ -357,6 +357,8 @@ public class AudioActivity extends Activity implements IAudioCallback {
             mTextViewArtist.setText("artist: " + mAudioData.getSinger());
             mTextViewData.setText("data: " + mAudioData.getUri());
             mTextView_MIME_TYPE.setText("MIME_TYPE: mp3");
+
+            getActionBar().setTitle(mAudioData.getTitle());
             play();
         }
     }
@@ -380,6 +382,8 @@ public class AudioActivity extends Activity implements IAudioCallback {
             mTextViewArtist.setText("artist: " + mAudioData.getSinger());
             mTextViewData.setText("data: " + mAudioData.getUri());
             mTextView_MIME_TYPE.setText("MIME_TYPE: mp3");
+
+            getActionBar().setTitle(mAudioData.getTitle());
             play();
         }
     }

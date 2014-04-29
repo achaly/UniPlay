@@ -165,6 +165,8 @@ public class ImageActivity extends Activity implements IImageCallback {
                                 mDeviceCurrentPosition = pos;
                                 String deviceId = finalDeviceList.get(pos).id;
                                 connect(deviceId, CONNECT_TIME_OUT);
+                            } else {
+                                showPhoto();
                             }
                         }
 
