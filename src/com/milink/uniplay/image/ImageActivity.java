@@ -81,6 +81,7 @@ public class ImageActivity extends Activity implements IImageCallback {
         imageTitleList = mBundle.getStringArrayList("imageTitleList");
         imagePathList = mBundle.getStringArrayList("imagePathList");
         // mImageList = (ArrayList<ImageInfo>) mBundle.get("imageInfoList");
+        getActionBar().setTitle(R.string.localDeviceName);
         mCurrentPosition = (Integer) mBundle.get("position");
         mImageView = (ImageView) findViewById(R.id.img);
         mImageView.setOnTouchListener(new OnTouchListener() {
@@ -157,6 +158,8 @@ public class ImageActivity extends Activity implements IImageCallback {
                                 mDeviceCurrentPosition = 0;
                                 stopShow();
                                 disconnect();
+
+                                getActionBar().setTitle(R.string.localDeviceName);
                             } else if (pos != mDeviceCurrentPosition) {
                                 if (mDeviceCurrentPosition != 0) {
                                     stopShow();
@@ -164,7 +167,10 @@ public class ImageActivity extends Activity implements IImageCallback {
                                 }
                                 mDeviceCurrentPosition = pos;
                                 String deviceId = finalDeviceList.get(pos).id;
+                                String deviceName = finalDeviceList.get(pos).name;
+
                                 connect(deviceId, CONNECT_TIME_OUT);
+                                getActionBar().setTitle(deviceName);
                             } else {
                                 showPhoto();
                             }
@@ -186,9 +192,7 @@ public class ImageActivity extends Activity implements IImageCallback {
                             new DialogInterface.OnClickListener() {
                                 @Override
                                 public void onClick(DialogInterface arg0, int arg1) {
-                                    ReturnCode ret = mMilinkClientManager.stopSlideshow();
-                                    Log.d(TAG, "stop slide show ret code: " + ret);
-                                    mOptionsMenu.getItem(0).setVisible(false);
+                                    showPhoto();
                                 }
                             }).create().show();
 
@@ -223,8 +227,6 @@ public class ImageActivity extends Activity implements IImageCallback {
         options.inInputShareable = true;
         Bitmap bm = BitmapFactory.decodeFile(path, options);
         mImageView.setImageBitmap(bm);
-
-        getActionBar().setTitle(title);
     }
 
     public void connect(String deviceId, int timeout) {

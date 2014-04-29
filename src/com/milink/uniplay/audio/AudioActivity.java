@@ -116,7 +116,7 @@ public class AudioActivity extends Activity implements IAudioCallback {
         mTextViewData.setText("data: " + mAudioData.getUri());
         mTextView_MIME_TYPE.setText("MIME_TYPE: mp3");
 
-        getActionBar().setTitle(mAudioData.getTitle());
+        getActionBar().setTitle(R.string.localDeviceName);
 
         switchState(Automata.START);
     }
@@ -164,9 +164,14 @@ public class AudioActivity extends Activity implements IAudioCallback {
                                 mDeviceCurrentPosition = 0;
                                 stopPlay();
                                 disconnect();
+
+                                getActionBar().setTitle(R.string.localDeviceName);
                             } else if (pos == mDeviceCurrentPosition) {
                                 if (mCurrentState == Automata.START) {
                                     String deviceId = finalDeviceList.get(pos).id;
+                                    String deviceName = finalDeviceList.get(pos).name;
+
+                                    getActionBar().setTitle(deviceName);
                                     connect(deviceId, CONNECT_TIME_OUT);
                                 } else if (mCurrentState == Automata.STOPPED) {
                                     switchState(Automata.DEVICE_READY);
@@ -180,6 +185,9 @@ public class AudioActivity extends Activity implements IAudioCallback {
                                 }
                                 mDeviceCurrentPosition = pos;
                                 String deviceId = finalDeviceList.get(pos).id;
+                                String deviceName = finalDeviceList.get(pos).name;
+
+                                getActionBar().setTitle(deviceName);
                                 connect(deviceId, CONNECT_TIME_OUT);
                             }
                         }
@@ -358,7 +366,6 @@ public class AudioActivity extends Activity implements IAudioCallback {
             mTextViewData.setText("data: " + mAudioData.getUri());
             mTextView_MIME_TYPE.setText("MIME_TYPE: mp3");
 
-            getActionBar().setTitle(mAudioData.getTitle());
             play();
         }
     }
@@ -383,7 +390,6 @@ public class AudioActivity extends Activity implements IAudioCallback {
             mTextViewData.setText("data: " + mAudioData.getUri());
             mTextView_MIME_TYPE.setText("MIME_TYPE: mp3");
 
-            getActionBar().setTitle(mAudioData.getTitle());
             play();
         }
     }

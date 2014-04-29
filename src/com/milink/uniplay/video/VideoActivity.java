@@ -126,10 +126,15 @@ public class VideoActivity extends Activity implements IVideoCallback {
                                 mDeviceCurrentPosition = 0;
                                 stopVideo(getCurrentFocus());
                                 disconnect();
+
+                                getActionBar().setTitle(R.string.localDeviceName);
                             } else if (pos == mDeviceCurrentPosition) {
                                 if (mCurrentState == Automata.START) {
                                     String deviceId = finalDeviceList.get(pos).id;
+                                    String deviceName = finalDeviceList.get(pos).name;
+
                                     connect(deviceId, CONNECT_TIME_OUT);
+                                    getActionBar().setTitle(deviceName);
                                 } else if (mCurrentState == Automata.STOPPED) {
                                     switchState(Automata.DEVICE_READY);
                                     playVideo(getCurrentFocus());
@@ -142,7 +147,10 @@ public class VideoActivity extends Activity implements IVideoCallback {
                                 }
                                 mDeviceCurrentPosition = pos;
                                 String deviceId = finalDeviceList.get(pos).id;
+                                String deviceName = finalDeviceList.get(pos).name;
+
                                 connect(deviceId, CONNECT_TIME_OUT);
+                                getActionBar().setTitle(deviceName);
                             }
                         }
 
@@ -170,7 +178,6 @@ public class VideoActivity extends Activity implements IVideoCallback {
         tv5.setText("Data: " + (String) map.get("DATA"));
         tv6.setText("MIME_TYPE: " + (String) map.get("MIME_TYPE"));
 
-        getActionBar().setTitle((String) map.get("TITLE"));
     }
 
     private void setVideoPlaying(boolean playing) {
