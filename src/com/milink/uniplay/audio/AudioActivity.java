@@ -117,6 +117,7 @@ public class AudioActivity extends Activity implements IAudioCallback {
         mTextView_MIME_TYPE.setText("MIME_TYPE: mp3");
 
         getActionBar().setTitle(R.string.localDeviceName);
+        getActionBar().setDisplayHomeAsUpEnabled(true);
 
         switchState(Automata.START);
     }
@@ -130,7 +131,7 @@ public class AudioActivity extends Activity implements IAudioCallback {
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
-        MenuItem mMenuItem = menu.add("push");
+        MenuItem mMenuItem = menu.add(R.string.push);
         mMenuItem.setShowAsAction(MenuItem.SHOW_AS_ACTION_IF_ROOM);
         mMenuItem.setIcon(android.R.drawable.ic_menu_share);
 
@@ -138,7 +139,9 @@ public class AudioActivity extends Activity implements IAudioCallback {
     }
 
     public boolean onOptionsItemSelected(MenuItem item) {
-        if (item.getTitle().equals("push")) {
+        if (item.getItemId() == android.R.id.home) {
+            this.finish();
+        } else if (item.getTitle().equals(getString(R.string.push))) {
             final ArrayList<Device> finalDeviceList = new ArrayList<Device>();
             synchronized (MilinkClient.mDeviceList) {
                 finalDeviceList.add(MilinkClient.mDeviceList.get(0));
@@ -194,7 +197,6 @@ public class AudioActivity extends Activity implements IAudioCallback {
                     })
                     .create().show();
         }
-
         return true;
     }
 
